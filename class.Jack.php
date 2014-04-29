@@ -33,11 +33,48 @@
 
 		private $jtm; //mezzo di trasmissione di tipo JTrasmissionMethod
 
+		//buffer VECCHIO CODICE
+		private $objSendMessageBuffer; //buffer per i mex da inviare
+		private $objSendMessageTimer; //buffer dei timer per i mex da inviare
+		private $objSendMessageBufferJData; //buffer per i messaggi da inviare nel formato JData
+		private $objSendAckBuffer; //buffer che contiene i mex ack da inviare (non necessitano di timer)
+		private $objIdMessageReceived; //buffer che contiene gli id dei messaggi ricevuti per evitare duplicazioni nei dati
+
 
 		/*---METODI ASTRATTI DA IMPLEMENTARE---*/
-		abstract protected function onReceive($objMessageJData); //evento scatenato al ricevimento di un mex valido
-		abstract protected function onReceiveAck($objMessageJData); //evento scatenato al ricevimento di una conferma di un mex	
+		abstract protected function onReceive($message); //evento scatenato al ricevimento di un mex valido
+		abstract protected function onReceiveAck($id); //evento scatenato al ricevimento di una conferma di un mex	
 		abstract protected function getTimestamp(); //metodo usato per ottenere il timestamp del sistema
+
+
+		/*---PARTE PRIVATA---*/
+		//verifica che il messaggio sia conforme al protocollo JACK
+		private function validate($messageString) {
+			if (!is_string($messageString) or strlen($messageString) == 0) { //se non stringa o vuota
+				return false;
+			}
+
+			$message = json_decode($message);
+
+			if (!$message) { //se non è un messaggio JSON valido
+				return false;
+			}
+
+			//check proprietà
+			if (!array_key_exists("id", $message)) { //se non contiene id
+				return false;
+			}
+			if (array_key_exists("values") xor array_key_exists("length")) { //se presente values deve esserlo anche length
+				return false;
+			}
+			if (array_key_exists("ack") xor array_key_exists("length-ack")) { //se presente ack deve esserlo anche length-ack
+				return false;
+			}
+
+			//MANCA VERIFICA ID E VALUES
+
+			//DA PENSARE SE RESTITUIRE DIRETTAMENTE JDATA
+		}
 
 
 		/*---INTERFACCIA PUBBLICA---*/
@@ -70,58 +107,12 @@
 			$this->objIdMessageReceived = new HashMap(); //buffer id messaggi già ricevuti
 
 		}
-
-
-	
-	
-		const MESSAGE_TYPE = "message_type"; //campo dentro messageJackData che contine il tipo di mex
-		const MESSAGE_DATA = "message_data"; //campo contente dati nel messaggio tipo dati 
-		
-		const MESSAGE_ID = "id";
-			
-		const MESSAGE_TYPE_ACK = "ack"; //messaggio ack per qualcosa inviato
-		const MESSAGE_TYPE_DATA = "values"; //messaggio normale contenente dati
-			
-		const MESSAGE_BOOLEAN_TRUE = "t"; //simobolo true in booleano nel mex
-		const MESSAGE_BOOLEAN_FALSE = "f"; //simbolo false nel mex
-		
 		 
-		
-		private $objJTM; //contiene il metodo di trasmissione da usare e deve rispettare l'interfaccia
-		
-		//private $stopPolling = true;
-		
-		private $objSendMessageBuffer; //buffer per i mex da inviare
-		private $objSendMessageTimer; //buffer dei timer per i mex da inviare
-		private $objSendMessageBufferJData; //buffer per i messaggi da inviare nel formato JData
-		
-		private $objSendAckBuffer; //buffer che contiene i mex ack da inviare (non necessitano di timer)
-		
-		private $objIdMessageReceived; //buffer che contiene gli id dei messaggi ricevuti per evitare duplicazioni nei dati
-		
-		
-		
-		
-		
-		public function __construct($objJTM, $objParam) { //costruttore
-		
-			$this->objJTM = $objJTM;
-			
-			
-			
-			
-			if (is_long($objParam) or is_int($objParam)) { //parametro long o int usato per specificare il tempo di prima di rispedire
-				
-				$this->TIME_BEFORE_RESEND = $objParam;
-			} else if (is_bool($objParam)) { //parametro boolean usato per specificare se usare la modalità send one time
-				
-				$this->SEND_ONE_TIME = $objParam;
-			}
-			
-		}
-		
-		
-		public function start() { //start jack (richiamo la lòettura della soprgente dei dati)
+
+		//VECCHIO CODICE
+
+		//funzione che avvia la classe di controllo
+		public function start() {
 			
 			//$this->stopPolling = false; //varibile che indica se far partire i mertodi per il polling
 			
@@ -131,6 +122,7 @@
 			
 		}
 		
+		//funzione che ferma la classe di controllo
 		public function stop() { //stop jack (richiamo l'invio dei dati)
 			
 			//$this->stopPolling = true;
@@ -139,14 +131,16 @@
 					
 		}
 		
-		public function flushBufferSend() { //funziona che cancella il buffer dei mex da inviare
+		//funziona che cancella il buffer dei mex da inviare
+		public function flushBufferSend() {
 			
 			$this->sendMessageBuffer = new HashMap(); //reset buffer messaggi da inviare
 			$this->sendMessageBufferJData = new HashMap();
 			
 		}
 		
-		private function execute($strMessage) { //corpo centrale della classe e decide cosa deve fare
+		//corpo centrale della classe e decide cosa deve fare
+		private function execute($strMessage) {
 					
 			if ($this->validate($strMessage)) {
 		
@@ -168,8 +162,7 @@
 			
 		}
 		
-		
-		
+
 		//verifica che il messaggio non sia già stato ricevuto (reinviato per non ricezione ack)
 		private function checkMessageAlreadyReceived($objMessageJData) {
 			
@@ -196,13 +189,7 @@
 			}
 			
 		}
-		
-		
-		//valida il messaggio conforme al protocollo JACK
-		private function validate($strMessage) {
-			//medoto da implementare
-			return true;
-		}		
+				
 		
 		private function getJDataMessage($strMessage) {
 			
